@@ -268,13 +268,16 @@ class Trainer(object):
                 if sched_param['type'] == 'CosineAnnealingLR':
                     half_cycle = sched_param['half_cycle']
                     eta_min = sched_param['eta_min']
-                    self.scheduler[key] = torch.optim.lr_scheduler.CosineAnnealingLR(
-                        optim, T_max=half_cycle, eta_min=eta_min)
+                    sched_obj = torch.optim.lr_scheduler.CosineAnnealingLR(
+                                optim, T_max=half_cycle, eta_min=eta_min)
+                    self.scheduler[key] = ('CosineAnnealingLR', sched_obj)
                 else:
                     assert 'No recognized scheduler!'
 
                 if 'cur_params' in sched_param and sched_param['cur_params'] is not None:
-                    self.scheduler[key].load_state_dict(torch.load(sched_param['cur_params'])['scheduler'][key])
+                    sd = torch.load(sched_param['cur_params'])['scheduler'][key]
+                    self.scheduler[key][1].load_state_dict(sd)
+                    self.show_outputs("Scheduler: {} Checkpoint: {} loaded !\n".format(key, sched_param['cur_params']))
                     self.show_outputs("Scheduler: {} Checkpoint: {} loaded !\n".format(key, sched_param['cur_params']))
 
         for key, (type, sched) in self.scheduler.items():

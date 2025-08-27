@@ -122,7 +122,16 @@ class CenterlinePatchDataset(Dataset):
 
         # 画像/ラベル（ZYX）とメタ
         img_zyx, spacing, origin, direction = get_medical_image(it["image"])
-        lab_zyx, _,       _,       _        = get_medical_image(it["label"])
+        # 画像/ラベル（ZYX）とメタ
+        img_zyx, spacing, origin, direction = get_medical_image(it["image"])
+
+        # --- SITKで読み -> >0 を 1 に二値化（スケール崩れ対策） ---
+        lab_img = sitk.ReadImage(it["label"])
+        lab_bin = sitk.BinaryThreshold(
+            lab_img, lowerThreshold=1e-6, upperThreshold=1e20,
+            insideValue=1, outsideValue=0
+        )
+        lab_zyx = sitk.GetArrayFromImage(lab_bin).astype(np.float32)
         img_zyx = norm_zero_one(img_zyx, span=list(self.clamp))
 
         # centerline が空のときは画像中心

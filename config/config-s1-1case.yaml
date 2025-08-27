@@ -5,17 +5,20 @@ dataset:
   defin_parm:
     json_path: ./data.json     
     train_indexes: [1]                    
-    valid_indexes: []
-    patch_size: 1                               # ← predict.py の (*8 + point) と自然に一致
+    valid_indexes: [1]
+    patch_size: 24                               # ← predict.py の (*8 + point) と自然に一致
     patches_per_case_train: 1
-    patches_per_case_val: 
-    points_per_patch: 4000
+    patches_per_case_val: 1
+    points_per_patch: 5000
     centerline_order: zyx                           # ← 中心線は ZYX 入力
     clamp_window: [-200, 400]                       # CT ウィンドウ（必要なら調整）
-  batch_size: 128
-  num_worker: 64
+    deterministic: True
+    force_same_patch: true 
+
+  batch_size: 1
+  num_worker: 0
   isdroplast: false
-  is_shuffle: true
+  is_shuffle: false
   defin_sampler: null
   param_sampler: {}
 
@@ -53,7 +56,7 @@ network:
 
 
 trainer:
-  checkpoint_mode: {dire: ./checkpoints, type: key_epoch}
+  checkpoint_mode: {dire: ./checkpoints/test, type: key_epoch}
   validation_step: 2
   threshold_grad: 1e5
   total_epoches: 100

@@ -9,10 +9,6 @@ def get_yaml(file):
 
 
 def train():
-    '''
-    注意：
-    1. 在Windows测试时,num_worker不可用，所以需要设置为0,否则dataloader过不去
-    '''
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str, default='./config/config-s1-train.yaml', help="config file",
