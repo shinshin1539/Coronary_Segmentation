@@ -1,0 +1,56 @@
+tag: onecase-s1
+
+dataset:
+  defin_path: ./dataset_onecase.py
+  defin_parm:
+    json_path: ./data.json
+    train_indexes: ["1"]   # 1症例だけを訓練に
+    val_indexes:   ["1"]   # 同じ1症例で検証も回す（動作確認用）
+    dire: ./data/CoronaryArtery
+  batch_size: 1
+  num_worker: 0          # ←Linuxでもまず0で。動くのを確認してから増やす
+  isdroplast: false
+  is_shuffle: false
+  defin_sampler: null
+  param_sampler: {}
+
+network:
+  use_cuda: true
+  use_parallel: false
+  modules:
+    Unet:
+      defin_path: './models/VoxelSeg.py'
+      defin_parm: {in_channels: 1, out_channels: 1, channels: [32, 64, 128]}
+      int_method: 'kaiming'     # 重み初期化（Trainerが処理）:contentReference[oaicite:13]{index=13}
+      optimizers: {type: Adam, lr: 1.0e-4}
+      schedulers: {type: CosineAnnealingLR, half_cycle: 50, eta_min: 1.0e-6}
+
+    Gseg:
+      defin_path: './models/GraphSeg.py'
+      defin_parm: {coords_dim: 3, hidden_dim: 192, feats_dims: [128, 64, 32]}
+      int_method: 'kaiming'
+      optimizers: {type: Adam, lr: 1.0e-4}
+      schedulers: {type: CosineAnnealingLR, half_cycle: 50, eta_min: 1.0e-6}
+
+  criterions:
+    img:
+      defin_path: './models/ImageLoss.py'
+      defin_parm: {weight: null, reduction: 'mean'}
+      weight: 1.0
+    mesh:
+      defin_path: './models/GraphLoss.py'
+      defin_parm: {}
+      weight: 1.0
+
+trainer:
+  checkpoint_mode: {dire: ./checkpoints, type: key_epoch}
+  validation_step: 1
+  threshold_grad: 1.0e5
+  total_epoches: 10
+  current_epoch: 0
+
+monitor:
+  index: dice          # まずはDiceで動作確認（chamferでも可）:contentReference[oaicite:14]{index=14}
+  logger: true
+  stdstream: true
+  tensorboardx: true

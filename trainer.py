@@ -465,6 +465,16 @@ class Trainer(object):
             y_true.append([true_image, true_verts])
 
         dice, chamfer = self.metrics(y_pred=y_pred, y_true=y_true)
+        
+        # --- add: validation visualization ---
+        from vis_callback import save_val_visuals
+        vis_cfg = self.config.get('visualize', {})
+        if vis_cfg.get('enable', False):
+            vis_dir = os.path.join(self.cpnt_dire, 'vis')
+            max_cases = int(vis_cfg.get('num_cases', 4))
+            save_val_visuals(y_pred=y_pred, y_true=y_true, out_dir=vis_dir,
+                            epoch=self.current_epoch, max_cases=max_cases)
+        # --- end add ---
 
         if self.config['monitor']['index'] == 'dice':
             self.monitor.append(dice)
