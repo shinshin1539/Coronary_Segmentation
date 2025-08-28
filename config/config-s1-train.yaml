@@ -1,10 +1,22 @@
 tag: GeometrySegmentation-CoronaryArtery-s1
 
 dataset:
-  defin_path: ./dataset.py
-  defin_parm: {}
-  batch_size: 128
-  num_worker: 64
+  defin_path: ./dataset_patches.py
+  defin_parm:
+    json_path: ./data.json     
+    train_indexes: "1-950"                    
+    valid_indexes: "951-1000"
+    patch_size: 24                               # ← predict.py の (*8 + point) と自然に一致
+    patches_per_case_train: 5
+    patches_per_case_val: 2
+    points_per_patch: 5000
+    centerline_order: zyx                           # ← 中心線は ZYX 入力
+    clamp_window: [-200, 400]                       # CT ウィンドウ（必要なら調整）
+    deterministic: false
+    force_same_patch: false
+
+  batch_size: 1
+  num_worker: 0
   isdroplast: false
   is_shuffle: true
   defin_sampler: null
@@ -12,7 +24,7 @@ dataset:
 
 network:
   use_cuda: true
-  use_parallel: true
+  use_parallel: false
   modules:
     Unet:
       defin_path: './models/VoxelSeg.py'
@@ -44,15 +56,18 @@ network:
 
 
 trainer:
-  checkpoint_mode: {dire: ./checkpoints, type: key_epoch}
+  checkpoint_mode: {dire: ./checkpoints/test, type: key_epoch}
   validation_step: 2
   threshold_grad: 1e5
-  total_epoches: 210
+  total_epoches: 100
   current_epoch: 1
-
 
 monitor:
   index: chamfer
   logger: true
   stdstream: true
   tensorboardx: true
+
+visualize:
+  enable:  { enable: true, num_cases: 2 }
+  num_cases: 2
