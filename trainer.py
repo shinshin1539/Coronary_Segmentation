@@ -9,6 +9,7 @@ import logging
 import torch
 import time
 import copy
+import csv
 import os
 
 
@@ -424,6 +425,8 @@ class Trainer(object):
             self.tboard_writer.add_scalar('loss', train_loss, global_step=self.current_epoch)
 
         self.show_outputs('\n{} Epoch{} finished ! Loss: {}\n'.format(self.tag, self.current_epoch, train_loss))
+        
+        self._last_train_loss = float(train_loss)
 
     def predict(self, data):
         images = data
@@ -491,6 +494,11 @@ class Trainer(object):
         if index < self.best_index or self.best_index < 0:
             self.best_index = index
             self.best_epoch = self.current_epoch
+            
+        from vis_callback import update_history
+        train_loss_epoch = getattr(self, "_last_train_loss", None)
+        update_history(out_dir=self.cpnt_dire, epoch=self.current_epoch,
+               train_loss=train_loss_epoch, val_dice=dice, val_chamfer=chamfer)
 
     def metrics(self, y_pred, y_true, isTrain=False):
 
@@ -584,3 +592,59 @@ class Trainer(object):
     def show_outputs(self, info):
         if hasattr(self, 'use_logger') and self.use_logger: logging.info(info)
         if not (hasattr(self, 'use_printt') and not self.use_pprint): print(info)
+
+    # ======== ADD: 学習履歴とプロット ========
+
+    def _history_init(self):
+        self.hist_path = os.path.join(self.checkpoint_dire, "history.csv")
+        if not os.path.exists(self.hist_path):
+            with open(self.hist_path, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["epoch", "train_loss", "val_dice", "val_chamfer", "lr"])
+
+    def _safe_get_lr(self):
+        # 取り出せるものだけ拾う（実装差吸収）
+        lrs = []
+        for obj_name in ("optimizer_dict", "optimizers", "optimizers_dict"):
+            optd = getattr(self, obj_name, None)
+            if isinstance(optd, dict):
+                for _, opt in optd.items():
+                    try:
+                        for g in opt.param_groups:
+                            lrs.append(float(g.get("lr", 0.0)))
+                    except Exception:
+                        pass
+        return (sum(lrs) / len(lrs)) if lrs else 0.0
+
+    def _history_append_and_plot(self, epoch: int, train_loss: float, val_dice: float, val_chamfer: float):
+        self._history_init()
+        lr = self._safe_get_lr()
+        with open(self.hist_path, "a", newline="") as f:
+            csv.writer(f).writerow([int(epoch), float(train_loss), float(val_dice), float(val_chamfer), float(lr)])
+
+        # プロット
+        import numpy as np
+        import matplotlib.pyplot as plt
+
+        data = np.genfromtxt(self.hist_path, delimiter=",", names=True)
+        if data.size == 0:
+            return
+        ep  = data["epoch"]
+        trl = data["train_loss"]
+        dsc = data["val_dice"]
+        chm = data["val_chamfer"]
+
+        fig = plt.figure(figsize=(8,4.5))
+        ax1 = fig.add_subplot(1,2,1)
+        ax1.plot(ep, trl, label="Train Loss")
+        ax1.set_xlabel("epoch"); ax1.set_ylabel("loss"); ax1.grid(True); ax1.legend()
+
+        ax2 = fig.add_subplot(1,2,2)
+        ax2.plot(ep, dsc, label="Val Dice")
+        ax2.plot(ep, chm, label="Val Chamfer")
+        ax2.set_xlabel("epoch"); ax2.set_ylabel("metric"); ax2.grid(True); ax2.legend()
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(self.checkpoint_dire, "curves.png"), dpi=160)
+        plt.close(fig)
+    # ======== /ADD ========
