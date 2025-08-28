@@ -12,7 +12,7 @@ dataset:
     points_per_patch: 5000
     centerline_order: zyx                           # ← 中心線は ZYX 入力
     clamp_window: [-200, 400]                       # CT ウィンドウ（必要なら調整）
-    deterministic: True
+    deterministic: false
     force_same_patch: true 
 
   batch_size: 1
